@@ -29,12 +29,18 @@ public class CodeRunner {
 
     private static final String DOCKER_CODE_FOLDER = "/usr/src/";
 
+    private PythonImageConfig pythonImageConfig;
 
     private DockerClient docker;
 
     private ExecutorService executionTimeoutWatchdog = Executors.newCachedThreadPool();
 
     public CodeRunner() throws DockerCertificateException {
+        this(new PythonImageConfig());
+    }
+
+    public CodeRunner(PythonImageConfig pythonImageConfig) throws DockerCertificateException {
+        this.pythonImageConfig = pythonImageConfig;
         docker = DefaultDockerClient.fromEnv().build();
         logDockerInfo();
         pullImage();
@@ -57,7 +63,7 @@ public class CodeRunner {
 
     private void pullImage() {
         try {
-            docker.pull(PythonImageConfig.PYTHON_DOCKER_IMAGE);
+            docker.pull(pythonImageConfig.getPythonImage());
         } catch (DockerException | InterruptedException e) {
             logger.warn("Failed to pull python docker image", e);
         }
@@ -77,7 +83,7 @@ public class CodeRunner {
         cmd[0] = "/bin/sh";
         cmd[1] = "-c";
         cmd[2] = bashCmd;
-        ContainerConfig containerConfig = new PythonImageConfig(executionLimits).containerConfig(cmd);
+        ContainerConfig containerConfig = pythonImageConfig.containerConfig(cmd, executionLimits);
 
         return createAndRunContainer(containerConfig, folderPath, executionLimits);
     }
@@ -91,7 +97,7 @@ public class CodeRunner {
      * @return stdout from container and execution time {@link RunResult}
      */
     public RunResult attachVolumeAndRunCommand(String folderPath, String[] cmd, CodeExecutionLimits executionLimits) throws DockerException, InterruptedException, IOException {
-        ContainerConfig containerConfig = new PythonImageConfig().containerConfig(cmd);
+        ContainerConfig containerConfig = pythonImageConfig.containerConfig(cmd, executionLimits);
 
         return createAndRunContainer(containerConfig, folderPath, executionLimits);
     }
@@ -106,7 +112,7 @@ public class CodeRunner {
      */
     public RunResult runPythonCode(String folderPath, String filenameToExec, CodeExecutionLimits executionLimits) throws DockerException, InterruptedException, IOException {
         String[] cmd = {"python", filenameToExec};
-        ContainerConfig containerConfig = new PythonImageConfig().containerConfig(cmd);
+        ContainerConfig containerConfig = pythonImageConfig.containerConfig(cmd, executionLimits);
 
         return createAndRunContainer(containerConfig, folderPath, executionLimits);
     }

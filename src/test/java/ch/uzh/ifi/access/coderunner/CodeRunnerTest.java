@@ -122,7 +122,7 @@ public class CodeRunnerTest {
 
         File main = createTempFileWithContent(mainCode, "/test.py");
 
-        RunResult runResult = runner.runPythonCode(folder.getRoot().getPath(), main.getName(), new CodeExecutionLimits(1, 1, 10 * 1000, false, false));
+        RunResult runResult = runner.runPythonCode(folder.getRoot().getPath(), main.getName(), CodeExecutionLimits.DEFAULTS);
 
         Assertions.assertThat(runResult.isOomKilled()).isTrue();
         Assertions.assertThat(runResult.getConsole()).startsWith("Out of Memory");
@@ -137,7 +137,7 @@ public class CodeRunnerTest {
 
         File main = createTempFileWithContent(mainCode, "/test.py");
 
-        RunResult runResult = runner.runPythonCode(folder.getRoot().getPath(), main.getName(), new CodeExecutionLimits(64, 1, 1000, false, false));
+        RunResult runResult = runner.runPythonCode(folder.getRoot().getPath(), main.getName(), CodeExecutionLimits.DEFAULTS);
 
         Assertions.assertThat(runResult.isTimeout()).isTrue();
         Assertions.assertThat(runResult.getConsole()).startsWith("Timeout");

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Comparator;
 import java.util.List;
 
@@ -19,6 +20,10 @@ public class FSHierarchySerializer {
     private static final Logger logger = LoggerFactory.getLogger(FSHierarchySerializer.class);
 
     private static final String INIT_FILE = "__init__.py";
+
+    private static final String CHMOD_755 = "rwxr-xr-x";
+
+    private List<String> executableExtensions = List.of(".sh", ".py");
 
     protected void persistFilesIntoFolder(String rootPath, List<VirtualFile> files) {
         if (files == null) {
@@ -40,7 +45,11 @@ public class FSHierarchySerializer {
                     logger.debug("Created parent folders: {}", createdParentsFolders);
 
                     Path file = Files.createFile(Paths.get(rootPath, vf.getPath()));
-                    Files.writeString(file, vf.getContent());
+                    file = Files.writeString(file, vf.getContent());
+                    if (isExecutableFile(file)) {
+                        logger.debug("Setting 755 on file {}", file.getFileName());
+                        setExecutePermissions(file);
+                    }
 
                     Path initInFolder = Paths.get(parent.getPath(), INIT_FILE);
                     if (!Files.exists(initInFolder)) {
@@ -54,15 +63,26 @@ public class FSHierarchySerializer {
                 }
 
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("Failed to serialize files to file system", e);
             }
         } else {
             logger.warn("Root folder for execution already exists, aborting.");
         }
     }
 
+    private boolean isExecutableFile(Path file) {
+        Path fileName = file.getFileName();
+        return fileName != null && executableExtensions
+                .stream()
+                .anyMatch(extension -> fileName.toString().endsWith(extension));
+    }
+
+    private void setExecutePermissions(Path file) throws IOException {
+        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString(CHMOD_755));
+    }
+
     protected void removeDirectory(Path path) throws IOException {
-        logger.debug("Removing temp directory @ " + path);
+        logger.debug("Removing temp directory @ {}", path);
         Files
                 .walk(path)
                 .sorted(Comparator.reverseOrder())
@@ -73,7 +93,7 @@ public class FSHierarchySerializer {
         try {
             Files.deleteIfExists(path);
         } catch (IOException e) {
-            logger.error(String.format("Failed to remove file @ %s", path), e);
+            logger.error("Failed to remove file @ {}", path, e);
         }
     }
 }
